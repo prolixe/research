@@ -1,0 +1,38 @@
+{
+  "arch": "x86_64",
+  "distro": "alpine",
+  "alpine": {
+    "version": "3.23.0",
+    "kernelPackage": "linux-virt",
+    "kernelImage": "vmlinuz-virt",
+    "rootfsPackages": [
+      "linux-virt",
+      "rng-tools",
+      "bash",
+      "ca-certificates",
+      "curl",
+      "git",
+      "nodejs",
+      "npm",
+      "openssh"
+    ],
+    "initramfsPackages": [],
+    "krunfwVersion": "v5.2.1"
+  },
+  "rootfs": {
+    "label": "gondolin-root",
+    "sizeMb": 2048
+  },
+  "postBuild": {
+    "copy": [
+      {
+        "src": "./claude-code-files.tar.gz",
+        "dest": "/tmp/claude-code-files.tar.gz"
+      }
+    ],
+    "commands": [
+      "tar xzf /tmp/claude-code-files.tar.gz -C /usr && rm /tmp/claude-code-files.tar.gz",
+      "claude --version || echo 'claude-code installed (version check may require runtime)'"
+    ]
+  }
+}

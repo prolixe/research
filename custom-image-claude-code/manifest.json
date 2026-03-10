@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "buildId": "fe807681-1156-5b3a-8fcf-65865b34859d",
+  "config": {
+    "arch": "x86_64",
+    "distro": "alpine",
+    "alpine": {
+      "version": "3.23.0",
+      "kernelPackage": "linux-virt",
+      "kernelImage": "vmlinuz-virt",
+      "rootfsPackages": [
+        "linux-virt",
+        "rng-tools",
+        "bash",
+        "ca-certificates",
+        "curl",
+        "git",
+        "nodejs",
+        "npm",
+        "openssh"
+      ],
+      "initramfsPackages": [],
+      "krunfwVersion": "v5.2.1"
+    },
+    "rootfs": {
+      "label": "gondolin-root",
+      "sizeMb": 2048
+    },
+    "postBuild": {
+      "copy": [
+        {
+          "src": "./claude-code-files.tar.gz",
+          "dest": "/tmp/claude-code-files.tar.gz"
+        }
+      ],
+      "commands": [
+        "tar xzf /tmp/claude-code-files.tar.gz -C /usr && rm /tmp/claude-code-files.tar.gz",
+        "claude --version || echo 'claude-code installed (version check may require runtime)'"
+      ]
+    }
+  },
+  "buildTime": "2026-03-10T01:46:33.803Z",
+  "assets": {
+    "kernel": "vmlinuz-virt",
+    "initramfs": "initramfs.cpio.lz4",
+    "rootfs": "rootfs.ext4",
+    "krunKernel": "krun-kernel",
+    "krunInitrd": "krun-empty-initrd"
+  },
+  "checksums": {
+    "kernel": "9933b4c8d4441f5672dfb15921d66fcf0d0cb9005f6191d81be13088db9f51c2",
+    "initramfs": "df1057a9902e78e2567c9a24502cf9aacf5c72dcfb6a20e66e364035f5cec20c",
+    "rootfs": "f4c81dcf83da423c3157c24f7309fe4e36d07955f4095feb2ae3fa81ce0afac8",
+    "krunKernel": "8da419440ed6e47e33014a76810656fb2533323a7b7ff85ca2d2397640dac5ef",
+    "krunInitrd": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

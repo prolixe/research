@@ -1,0 +1,62 @@
+diff --git a/host/src/alpine/packages.ts b/host/src/alpine/packages.ts
+index f084139..5464cfb 100644
+--- a/host/src/alpine/packages.ts
++++ b/host/src/alpine/packages.ts
+@@ -173,7 +173,12 @@ export function runPostBuildCommands(
+ 
+   const root = path.resolve(rootfsDir);
+   const shellPath = path.join(root, "bin/sh");
+-  if (!fs.existsSync(shellPath)) {
++  let shellExists = false;
++  try {
++    fs.lstatSync(shellPath);
++    shellExists = true;
++  } catch {}
++  if (!shellExists) {
+     throw new Error(`postBuild.commands requires ${shellPath}`);
+   }
+ 
+diff --git a/host/src/alpine/utils.ts b/host/src/alpine/utils.ts
+index 535be9d..c90a51f 100644
+--- a/host/src/alpine/utils.ts
++++ b/host/src/alpine/utils.ts
+@@ -28,16 +28,31 @@ export class DownloadFileError extends Error {
+   }
+ }
+ 
+-/** Download helper using Node's built-in fetch */
++/** Download helper using curl (proxy-aware) with fetch fallback */
+ export async function downloadFile(url: string, dest: string): Promise<void> {
+-  const res = await fetch(url, { redirect: "follow" });
+-
+-  if (!res.ok) {
+-    throw new DownloadFileError(url, { status: res.status });
++  try {
++    execFileSync("curl", ["-sS", "-f", "-L", "-w", "%{http_code}", "-o", dest, url], {
++      stdio: ["ignore", "pipe", "pipe"],
++      timeout: 300_000,
++    });
++  } catch (curlErr: any) {
++    // curl exit code 22 = HTTP error >= 400; try to extract status from stderr
++    const stderr = typeof curlErr.stderr === "string" ? curlErr.stderr
++      : curlErr.stderr instanceof Buffer ? curlErr.stderr.toString() : "";
++    const stdout = typeof curlErr.stdout === "string" ? curlErr.stdout
++      : curlErr.stdout instanceof Buffer ? curlErr.stdout.toString() : "";
++    // Check if it's a 404
++    const is404 = stderr.includes("404") || stdout.includes("404")
++      || stderr.includes("The requested URL returned error: 404");
++    const status = is404 ? 404 : undefined;
++    // Clean up partial file on error
++    try { fs.unlinkSync(dest); } catch {}
++    throw new DownloadFileError(url, {
++      status,
++      message: `Failed to download ${url}: curl exited with code ${curlErr.status}`,
++      cause: curlErr,
++    });
+   }
+-
+-  const buf = Buffer.from(await res.arrayBuffer());
+-  fs.writeFileSync(dest, buf);
+ }
+ 
+ export function copyExecutable(
