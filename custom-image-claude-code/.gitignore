@@ -1,0 +1,9 @@
+# Cloned repo (not our code)
+gondolin/
+
+# Large build artifacts
+claude-code-assets/
+claude-code-files.tar.gz
+
+# Intermediate test configs
+claude-code-image-nopost.json
