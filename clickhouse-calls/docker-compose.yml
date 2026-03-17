@@ -1,0 +1,71 @@
+version: "3.8"
+
+# ─── Paths on the host ────────────────────────────────────────────────────────
+#   Data  → /tmp/clickhouse/data
+#   Logs  → /tmp/clickhouse/logs
+#
+# Run `mkdir -p /tmp/clickhouse/{data,logs}` before `docker compose up`
+# (or let the init container below do it automatically).
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── Helper: make sure /tmp dirs exist and have open permissions ─────────────
+  init-dirs:
+    image: busybox
+    command: sh -c "mkdir -p /tmp/clickhouse/data /tmp/clickhouse/logs && chmod -R 777 /tmp/clickhouse"
+    volumes:
+      - /tmp/clickhouse:/tmp/clickhouse
+
+  # ── ClickHouse server ────────────────────────────────────────────────────────
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.3
+    depends_on:
+      init-dirs:
+        condition: service_completed_successfully
+    ports:
+      - "8123:8123"   # HTTP interface  (curl http://localhost:8123/ping)
+      - "9000:9000"   # Native protocol (clickhouse-client / drivers)
+    volumes:
+      # ── Data & logs land in /tmp on the host ─────────────────────────────
+      - /tmp/clickhouse/data:/var/lib/clickhouse
+      - /tmp/clickhouse/logs:/var/log/clickhouse-server
+      # ── Custom server config (async inserts, logging paths, etc.) ─────────
+      - ./config/clickhouse-config.xml:/etc/clickhouse-server/config.d/custom.xml:ro
+      - ./config/clickhouse-users.xml:/etc/clickhouse-server/users.d/custom.xml:ro
+      # ── Schema: any *.sql file here runs automatically on first start ──────
+      - ./init:/docker-entrypoint-initdb.d:ro
+    environment:
+      CLICKHOUSE_DB: calls
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8123/ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  # ── One-shot generator: seeds the DB with synthetic data ────────────────────
+  generator:
+    build:
+      context: ./generator
+      dockerfile: Dockerfile
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    environment:
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: "8123"
+      CLICKHOUSE_DB: calls
+      # Number of conversations to generate (override with: docker compose run -e NUM_CONVOS=5000 generator)
+      NUM_CONVOS: "500"
+      # streaming  → keep running, emitting events in near real-time
+      # bulk       → insert all events at once and exit
+      MODE: "streaming"
+      # Events per second in streaming mode
+      EVENTS_PER_SEC: "20"
+    restart: on-failure

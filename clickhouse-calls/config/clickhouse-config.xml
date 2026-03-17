@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<!--
+    ClickHouse server configuration overrides.
+    Paths are set to /tmp so data and logs land there on the host
+    via the Docker volume mounts defined in docker-compose.yml.
+-->
+<clickhouse>
+    <!-- Data storage -->
+    <path>/var/lib/clickhouse/</path>
+    <tmp_path>/var/lib/clickhouse/tmp/</tmp_path>
+    <user_files_path>/var/lib/clickhouse/user_files/</user_files_path>
+
+    <!-- Logging -->
+    <logger>
+        <level>information</level>
+        <log>/var/log/clickhouse-server/clickhouse-server.log</log>
+        <errorlog>/var/log/clickhouse-server/clickhouse-server.err.log</errorlog>
+        <size>1000M</size>
+        <count>5</count>
+    </logger>
+
+    <!-- Listen on all interfaces inside the container -->
+    <listen_host>0.0.0.0</listen_host>
+
+    <!-- HTTP interface -->
+    <http_port>8123</http_port>
+
+    <!-- Native TCP interface -->
+    <tcp_port>9000</tcp_port>
+
+    <!-- Async inserts: buffer rows for up to 200ms or 100k rows before flushing -->
+    <async_insert>1</async_insert>
+    <wait_for_async_insert>0</wait_for_async_insert>
+    <async_insert_max_data_size>10485760</async_insert_max_data_size>   <!-- 10 MB -->
+    <async_insert_busy_timeout_ms>200</async_insert_busy_timeout_ms>
+</clickhouse>
